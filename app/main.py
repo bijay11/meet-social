@@ -1,9 +1,14 @@
 from typing import Optional
-from fastapi import status, FastAPI, HTTPException, Response
+from fastapi import status, FastAPI, HTTPException, Response, Depends
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -24,6 +29,10 @@ while True:
         print("Connecting to the database failed.")
         print("Error:", error)
         time.sleep(2)
+
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    return {"status": "session"}
 
 @app.get("/posts")
 def get_posts():
@@ -67,7 +76,6 @@ def delete_post(id: int):
 
 @app.put("/posts/{id}")
 def update_post(id: int, post: Post):
-    print("=====test post ",post)
     cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""", (post.title, post.content, post.published, (str(id),)))
     post = cursor.fetchone()
 
